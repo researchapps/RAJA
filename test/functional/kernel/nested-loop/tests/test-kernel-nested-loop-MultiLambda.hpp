@@ -27,7 +27,7 @@ using MultiLambdaSupportedLoopTypeList = camp::list<
 //
 template <typename WORKING_RES, typename EXEC_POLICY>
 void KernelNestedLoopTest(){
-  constexpr static int N = 1000;
+  constexpr static int N = 64;
   constexpr static int DIM = 2;
 
   camp::resources::Resource host_res{camp::resources::Host()};
@@ -83,10 +83,16 @@ void KernelNestedLoopTest(){
     }
   );
 
+
+  RAJA::resources::Event e = work_res.get_event();
+  work_res.wait_for(&e);
+
   work_res.memcpy(check_arrA, work_arrA, sizeof(double) * RAJA::stripIndexType(N*N));
   work_res.memcpy(check_arrB, work_arrB, sizeof(double) * RAJA::stripIndexType(N*N));
 
   RAJA::forall<RAJA::seq_exec>(RAJA::RangeSegment{0, N*N}, [=] (RAJA::Index_type i) {
+    if ( RAJA::test_abs(test_arrA[i] - check_arrA[i]) >= 10e-8 ) std::cout << "i : " << i << " " << RAJA::test_abs(test_arrA[i] - check_arrA[i]) << "\n";
+    if ( RAJA::test_abs(test_arrB[i] - check_arrB[i]) >= 10e-8 ) std::cout << "i : " << i << " " << RAJA::test_abs(test_arrB[i] - check_arrB[i]) << "\n";
     ASSERT_TRUE( RAJA::test_abs(test_arrA[i] - check_arrA[i]) < 10e-8 );
     ASSERT_TRUE( RAJA::test_abs(test_arrB[i] - check_arrB[i]) < 10e-8 );
   });
@@ -153,10 +159,12 @@ struct MultiLambdaNestedLoopExec<DEVICE_DEPTH_2, POLICY_DATA> {
             RAJA::statement::Lambda<0>
           >
         >,
+        RAJA::statemane::HipSyncThreads,
         RAJA::statement::For<0, typename camp::at<POLICY_DATA, camp::num<0>>::type,
           RAJA::statement::For<1, typename camp::at<POLICY_DATA, camp::num<1>>::type,
             RAJA::statement::Lambda<1>
           >
+        >
         >
       >
     >;
