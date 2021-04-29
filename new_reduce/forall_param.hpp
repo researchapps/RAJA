@@ -100,6 +100,7 @@ namespace detail
 #include "sequential/forall.hpp"
 #include "openmp/forall.hpp"
 #include "omp-target/forall.hpp"
+#include "tbb/forall.hpp"
 
 template<typename ExecPol, typename B, typename... Params>
 void forall_param(int N, const B& body, Params... params) {

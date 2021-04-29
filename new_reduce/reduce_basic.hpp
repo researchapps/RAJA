@@ -26,6 +26,7 @@ namespace detail
 #include "sequential/reduce.hpp"
 #include "openmp/reduce.hpp"
 #include "omp-target/reduce.hpp"
+#include "tbb/reduce.hpp"
 
 template <template <typename, typename, typename> class Op, typename T>
 auto constexpr Reduce(T *target)

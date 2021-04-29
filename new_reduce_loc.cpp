@@ -5,6 +5,7 @@
 #include "new_reduce/reduce_basic.hpp"
 #include "new_reduce/forall_param.hpp"
 
+#include <numeric>
 
 int main(int argc, char *argv[])
 {

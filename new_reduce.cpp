@@ -22,6 +22,7 @@ int my_init(int* orig) {
 //                              : my_sum_fun(&omp_out, &omp_in)) \
 //                              initializer(omp_priv = my_init(&omp_orig)) \
 
+
 int main(int argc, char *argv[])
 {
   if (argc < 2) {
@@ -92,6 +93,56 @@ int main(int argc, char *argv[])
     std::cout << "r : " << r << "\n";
     std::cout << "m : "  << m  <<"\n";
     std::cout << "ma : " << ma <<"\n";
+  }
+#endif
+
+#if defined(RAJA_ENABLE_TBB)
+  {
+    std::cout << "TBB Reduction NEW\n";
+
+    RAJA::Timer t;
+    t.reset();
+    t.start();
+
+    forall_param<RAJA::tbb_for_dynamic>(N,
+                 //[=](int i, double &r_, double &m_, double &ma_) {
+                 [=](int i, double &r_) {
+                   r_ += a[i] * b[i];
+
+                   //m_ = a[i] < m_ ? a[i] : m_;
+                   //ma_ = a[i] > m_ ? a[i] : m_;
+                 },
+                 Reduce<RAJA::operators::plus>(&r));
+                 //Reduce<RAJA::operators::plus>(&r),
+                 //Reduce<RAJA::operators::minimum>(&m),
+                 //Reduce<RAJA::operators::maximum>(&ma));
+    t.stop();
+    
+    std::cout << "t : " << t.elapsed() << "\n";
+    std::cout << "r : " << r << "\n";
+    //std::cout << "m : "  << m  <<"\n";
+    //std::cout << "ma : " << ma <<"\n";
+  }
+  {
+    std::cout << "TBB Reduction RAJA\n";
+    RAJA::ReduceSum<RAJA::tbb_reduce, double> rr(0);
+    RAJA::ReduceMin<RAJA::tbb_reduce, double> rm(5000);
+    RAJA::ReduceMax<RAJA::tbb_reduce, double> rma(0);
+
+    RAJA::Timer t;
+    t.start();
+    RAJA::forall<RAJA::tbb_for_dynamic>(RAJA::RangeSegment(0, N),
+                                                        [=](int i) {
+                                                          rr += a[i] * b[i];
+                                                          rm.min(a[i]);
+                                                          rma.max(a[i]);
+                                                        });
+    t.stop();
+
+    std::cout << "t : " << t.elapsed() << "\n";
+    std::cout << "r : " << rr.get() << "\n";
+    std::cout << "m : "  << rm.get()  <<"\n";
+    std::cout << "ma : " << rma.get() <<"\n";
   }
 #endif
 
