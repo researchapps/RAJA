@@ -3,6 +3,7 @@
 
 
 
+#if defined(RAJA_ENABLE_TBB)
 namespace detail {
 
   // Init
@@ -25,5 +26,6 @@ namespace detail {
   }
 
 } //  namespace detail
+#endif
 
 #endif //  NEW_REDUCE_SEQ_REDUCE_HPP
