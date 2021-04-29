@@ -105,23 +105,23 @@ int main(int argc, char *argv[])
     t.start();
 
     forall_param<RAJA::tbb_for_dynamic>(N,
-                 //[=](int i, double &r_, double &m_, double &ma_) {
-                 [=](int i, double &r_) {
+                 [=](int i, double &r_, double &m_, double &ma_) {
+                 //[=](int i, double &r_) {
                    r_ += a[i] * b[i];
 
-                   //m_ = a[i] < m_ ? a[i] : m_;
-                   //ma_ = a[i] > m_ ? a[i] : m_;
+                   m_ = a[i] < m_ ? a[i] : m_;
+                   ma_ = a[i] > m_ ? a[i] : m_;
                  },
-                 Reduce<RAJA::operators::plus>(&r));
-                 //Reduce<RAJA::operators::plus>(&r),
-                 //Reduce<RAJA::operators::minimum>(&m),
-                 //Reduce<RAJA::operators::maximum>(&ma));
+                 //Reduce<RAJA::operators::plus>(&r));
+                 Reduce<RAJA::operators::plus>(&r),
+                 Reduce<RAJA::operators::minimum>(&m),
+                 Reduce<RAJA::operators::maximum>(&ma));
     t.stop();
     
     std::cout << "t : " << t.elapsed() << "\n";
     std::cout << "r : " << r << "\n";
-    //std::cout << "m : "  << m  <<"\n";
-    //std::cout << "ma : " << ma <<"\n";
+    std::cout << "m : "  << m  <<"\n";
+    std::cout << "ma : " << ma <<"\n";
   }
   {
     std::cout << "TBB Reduction RAJA\n";
