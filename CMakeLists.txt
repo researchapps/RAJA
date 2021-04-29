@@ -323,6 +323,6 @@ raja_add_executable(
   NAME new_reduce
   SOURCES new_reduce.cpp)
 
-raja_add_executable(
-  NAME new_reduce_loc
-  SOURCES new_reduce_loc.cpp)
+#raja_add_executable(
+#  NAME new_reduce_loc
+#  SOURCES new_reduce_loc.cpp)
