@@ -3,8 +3,6 @@
 #include <RAJA/RAJA.hpp>
 #include <RAJA/util/Timer.hpp>
 
-#include <numeric>
-
 #include "new_reduce/reduce_basic.hpp"
 #include "new_reduce/forall_param.hpp"
 

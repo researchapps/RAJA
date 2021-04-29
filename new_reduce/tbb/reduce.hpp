@@ -7,24 +7,21 @@ namespace detail {
 
   // Init
   template<typename EXEC_POL, typename OP, typename T>
-  camp::concepts::enable_if_t< bool, std::is_same< EXEC_POL, RAJA::tbb_for_dynamic> > // Returning bool because void param loop machine broken.
+  camp::concepts::enable_if< std::is_same< EXEC_POL, RAJA::tbb_for_dynamic> >
   init(Reducer<OP, T>& red) {
     red.val = Reducer<OP,T>::op::identity();
-    return true;
   }
   // Combine
   template<typename EXEC_POL, typename OP, typename T>
-  camp::concepts::enable_if_t< bool, std::is_same< EXEC_POL, RAJA::tbb_for_dynamic> > // Returning bool because void param loop machine broken.
+  camp::concepts::enable_if< std::is_same< EXEC_POL, RAJA::tbb_for_dynamic> >
   combine(Reducer<OP, T>& out, const Reducer<OP, T>& in) {
-    out.val = typename Reducer<OP,T>::op{}(out.val, in.val);
-    return true;
+    //out.val = typename Reducer<OP,T>::op{}(out.val, in.val);
   }
   // Resolve
   template<typename EXEC_POL, typename OP, typename T>
-  camp::concepts::enable_if_t< bool, std::is_same< EXEC_POL, RAJA::tbb_for_dynamic> > // Returning bool because void param loop machine broken.
+  camp::concepts::enable_if< std::is_same< EXEC_POL, RAJA::tbb_for_dynamic> >
   resolve(Reducer<OP, T>& red) {
     *red.target = red.val;
-    return true;
   }
 
 } //  namespace detail
