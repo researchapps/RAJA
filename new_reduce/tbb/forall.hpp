@@ -12,11 +12,11 @@ namespace detail {
   {
     FORALL_PARAMS_T<Params...> f_params(params...);
 
-    init<EXEC_POL>(f_params);
-
     EXEC_POL p;
     using brange = ::tbb::blocked_range<size_t>;
-    ::tbb::parallel_for(brange(0, N, p.grain_size), [&](const brange& r) {
+    ::tbb::parallel_for(brange(0, N, p.grain_size), [=, &f_params](const brange& r) {
+
+      init<EXEC_POL>(f_params);
 
       using RAJA::internal::thread_privatize;
       auto privatizer = thread_privatize(loop_body);

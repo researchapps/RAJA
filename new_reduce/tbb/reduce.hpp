@@ -15,7 +15,7 @@ namespace detail {
   template<typename EXEC_POL, typename OP, typename T>
   camp::concepts::enable_if< std::is_same< EXEC_POL, RAJA::tbb_for_dynamic> >
   combine(Reducer<OP, T>& out, const Reducer<OP, T>& in) {
-    //out.val = typename Reducer<OP,T>::op{}(out.val, in.val);
+    out.val = typename Reducer<OP,T>::op{}(out.val, in.val);
   }
   // Resolve
   template<typename EXEC_POL, typename OP, typename T>
