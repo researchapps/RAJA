@@ -90,6 +90,10 @@ raja_add_executable(
   SOURCES raja-teams.cpp)
 
 raja_add_executable(
+  NAME teams-perf
+  SOURCES teams-perf.cpp)
+
+raja_add_executable(
   NAME teams_matrix-multiply
   SOURCES teams_matrix-multiply.cpp)
 
