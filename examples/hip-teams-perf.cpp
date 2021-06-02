@@ -69,7 +69,10 @@ using threads_z = RAJA::expt::LoopPolicy<loop_policy
                                        >;
 
 #define dofs1D 8
-#define qpts1D 10
+#define qpts1D 8
+
+#define FOREACH_THREAD(i,k,N) \
+for(int i=hipThreadIdx_ ##k; i<N; i+=hipBlockDim_ ##k)
 
 int main(int RAJA_UNUSED_ARG(argc), char **RAJA_UNUSED_ARG(argv[]))
 {
@@ -119,41 +122,20 @@ int main(int RAJA_UNUSED_ARG(argc), char **RAJA_UNUSED_ARG(argv[]))
            RAJA_TEAM_SHARED double Cmem[qpts1D][dofs1D];
            RAJA_TEAM_SHARED double X[dofs1D][dofs1D][dofs1D];
 
-#if 0
-           //Load Cmem
-           RAJA::expt::loop<threads_z>(ctx, RAJA::RangeSegment(0, 1), [&](int dz) {
-               RAJA::expt::loop<threads_y>(ctx, RAJA::RangeSegment(0, qpts1D), [&](int q) {
-                   RAJA::expt::loop<threads_x>(ctx, RAJA::RangeSegment(0, dofs1D), [&](int dx) {
-                       Cmem[q][dx] = Cview(q,dx);
-                     });
-                 });
-             });
-
-
-           RAJA::expt::loop<threads_z>(ctx, RAJA::RangeSegment(0, dofs1D), [&](int dz) {
-               RAJA::expt::loop<threads_y>(ctx, RAJA::RangeSegment(0, dofs1D), [&](int dy) {
-                   RAJA::expt::loop<threads_x>(ctx, RAJA::RangeSegment(0, dofs1D), [&](int dx) {
-                       X[dz][dy][dx] = Aview(e, dz, dy, dx);
-                     });
-                 });
-             });
-
-
-           ctx.teamSync();
-#endif
-         RAJA::expt::loop<threads_z>(ctx, RAJA::RangeSegment(0, qpts1D), [&](int q) {
-           RAJA::expt::loop<threads_y>(ctx, RAJA::RangeSegment(0, dofs1D), [&](int dz) {
-               RAJA::expt::loop<threads_x>(ctx, RAJA::RangeSegment(0, dofs1D), [&](int dy) {
-
+#if defined(RAJA_DEVICE_CODE)           
+           FOREACH_THREAD(q, z, qpts1D) {
+             FOREACH_THREAD(dz, y, dofs1D) {
+               FOREACH_THREAD(dy, x, dofs1D) {
+              
                    double dot = 0.0;
                    for(int d = 0; d<dofs1D; ++d) {
                      dot += Cmem[q][d] * X[d][dy][dz];
                    }
                    Bview(e, dz, dy, q) = dot;
-                 });
-             });
-           });
-
+                 }
+             }
+           }
+#endif
 
          });//team_x
 
@@ -164,7 +146,6 @@ int main(int RAJA_UNUSED_ARG(argc), char **RAJA_UNUSED_ARG(argv[]))
   hipDeviceSynchronize();
                                       
   high_resolution_clock::time_point t2 = high_resolution_clock::now();
-
   duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
   
   std::cout << "It took me " << time_span.count() << " seconds.";
@@ -173,7 +154,7 @@ int main(int RAJA_UNUSED_ARG(argc), char **RAJA_UNUSED_ARG(argv[]))
   RAJA::ReduceSum<RAJA::hip_reduce, double> dot(0.0);
   
   RAJA::forall<RAJA::hip_exec<256>>
-    (RAJA::RangeSegment(0, N_mats*dofs1D*dofs1D*dofs1D), [=] RAJA_DEVICE (int i) {
+    (RAJA::RangeSegment(0, N_mats*dofs1D*dofs1D*qpts1D), [=] RAJA_DEVICE (int i) {
       
       dot += B_ptr[i];
       
