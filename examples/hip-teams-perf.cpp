@@ -80,10 +80,10 @@ int main(int RAJA_UNUSED_ARG(argc), char **RAJA_UNUSED_ARG(argv[]))
 
   const int Niter = 80000;
   const int N_mats = 1000;
-  double *A_ptr = memoryManager::allocate<double>(dofs1D * dofs1D * dofs1D * N_mats);
+  double *A_ptr = memoryManager::allocate_gpu<double>(dofs1D * dofs1D * dofs1D * N_mats);
 
-  double *B_ptr = memoryManager::allocate<double>(dofs1D * dofs1D * qpts1D * N_mats);
-  double *C_ptr = memoryManager::allocate<double>(dofs1D * qpts1D);
+  double *B_ptr = memoryManager::allocate_gpu<double>(dofs1D * dofs1D * qpts1D * N_mats);
+  double *C_ptr = memoryManager::allocate_gpu<double>(dofs1D * qpts1D);
 
   RAJA::View<double, RAJA::Layout<4>> Aview(A_ptr, N_mats, dofs1D, dofs1D, dofs1D);
   RAJA::View<double, RAJA::Layout<4>> Bview(B_ptr, N_mats, dofs1D, dofs1D, qpts1D);
@@ -162,6 +162,9 @@ int main(int RAJA_UNUSED_ARG(argc), char **RAJA_UNUSED_ARG(argv[]))
   
                                       
   std::cout<<"dot.Get() = "<<dot.get()<<std::endl;
+  memoryManager::deallocate_gpu(A_ptr);
+  memoryManager::deallocate_gpu(B_ptr);
+  memoryManager::deallocate_gpu(C_ptr);
   
 
 }  // Main

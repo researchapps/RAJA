@@ -77,10 +77,10 @@ int main(int RAJA_UNUSED_ARG(argc), char **RAJA_UNUSED_ARG(argv[]))
 
   const int Niter = 80000;
   const int N_mats = 1000;
-  double *A_ptr = memoryManager::allocate<double>(dofs1D * dofs1D * dofs1D * N_mats);
+  double *A_ptr = memoryManager::allocate_gpu<double>(dofs1D * dofs1D * dofs1D * N_mats);
 
-  double *B_ptr = memoryManager::allocate<double>(dofs1D * dofs1D * qpts1D * N_mats);
-  double *C_ptr = memoryManager::allocate<double>(dofs1D * qpts1D);
+  double *B_ptr = memoryManager::allocate_gpu<double>(dofs1D * dofs1D * qpts1D * N_mats);
+  double *C_ptr = memoryManager::allocate_gpu<double>(dofs1D * qpts1D);
 
   RAJA::View<double, RAJA::Layout<4>> Aview(A_ptr, N_mats, dofs1D, dofs1D, dofs1D);
   RAJA::View<double, RAJA::Layout<4>> Bview(B_ptr, N_mats, dofs1D, dofs1D, qpts1D);
@@ -158,29 +158,32 @@ int main(int RAJA_UNUSED_ARG(argc), char **RAJA_UNUSED_ARG(argv[]))
          });//team_x
 
      });  // outer lambda
-       
+
   }//iter loop
 
   hipDeviceSynchronize();
-                                      
+
   high_resolution_clock::time_point t2 = high_resolution_clock::now();
 
   duration<double> time_span = duration_cast<duration<double>>(t2 - t1);
-  
+
   std::cout << "It took me " << time_span.count() << " seconds.";
   std::cout << std::endl;
-  
+
   RAJA::ReduceSum<RAJA::hip_reduce, double> dot(0.0);
-  
+
   RAJA::forall<RAJA::hip_exec<256>>
     (RAJA::RangeSegment(0, N_mats*dofs1D*dofs1D*dofs1D), [=] RAJA_DEVICE (int i) {
-      
+
       dot += B_ptr[i];
-      
+
     });
-  
-                                      
+
+
   std::cout<<"dot.Get() = "<<dot.get()<<std::endl;
-  
+
+  memoryManager::deallocate_gpu(A_ptr);
+  memoryManager::deallocate_gpu(B_ptr);
+  memoryManager::deallocate_gpu(C_ptr);
 
 }  // Main
