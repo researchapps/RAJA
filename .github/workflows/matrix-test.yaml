@@ -1,0 +1,85 @@
+name: Test with Containers
+on:
+  pull_request: []
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GTEST_COLOR: 1
+      CMAKE_EXTRA_FLAGS: '-DENABLE_DEVELOPER_BENCHMARKS=On -DENABLE_DEVELOPER_DEFAULTS=On -DCMAKE_CXX_STANDARD=11'
+    strategy:
+      fail-fast: false
+      matrix:
+
+        arch: ['linux/amd64'] # ,'linux/ppc64le','linux/arm64']
+
+        # These are images under https://github.com/orgs/rse-ops/packages?repo_name=docker-images        
+                     # family           container                   cmake flags                                                                          jobs test?
+        container: [["gcc", "gcc-ubuntu-20.04:gcc-9.4.0", "-DCMAKE_CXX_COMPILER=g++ -DENABLE_WARNINGS=On -DENABLE_TBB=On -DRAJA_ENABLE_BOUNDS_CHECK=ON", 16, yes],
+                    ["gcc", "gcc-ubuntu-20.04:gcc-10.3.0", "-DCMAKE_CXX_COMPILER=g++ -DENABLE_WARNINGS=On -DENABLE_TBB=On -DRAJA_ENABLE_BOUNDS_CHECK=ON", 16, yes],
+                    ["gcc", "gcc-ubuntu-20.04:gcc-11.2.0", "-DCMAKE_CXX_COMPILER=g++ -DENABLE_WARNINGS=On -DENABLE_TBB=On -DRAJA_ENABLE_BOUNDS_CHECK=ON", 16, yes],
+
+                    # clang without and with debug (I added -DENABLE_OPENMP=OFF because triggered https://github.com/spack/spack/issues/12571)
+                    ["clang", "clang-ubuntu-20.04:llvm-13.0.0", "-DCMAKE_CXX_COMPILER=clang++ -DENABLE_OPENMP=OFF -DCMAKE_CXX_FLAGS=-fmodules -DENABLE_TBB=On", 16, yes],  
+                    ["clang", "clang-ubuntu-20.04:llvm-13.0.0", "-DCMAKE_CXX_COMPILER=clang++ -DENABLE_OPENMP=OFF -DCMAKE_BUILD_TYPE=Debug -DENABLE_TBB=On -DCMAKE_CXX_FLAGS=-fsanitize=address", 16, yes],
+
+                    # fancy schmancy - nvidia without and with debug, then hip and intel
+                    ["nvidia", "cuda-ubuntu-20.04:cuda-11.1.1 ", "-DCMAKE_CXX_COMPILER=g++ -DENABLE_CUDA=On -DCMAKE_CUDA_STANDARD=14", 2, no],
+                    ["nvidia", "cuda-ubuntu-20.04:cuda-11.1.1 ", "-DCMAKE_CXX_COMPILER=g++ -DCMAKE_BUILD_TYPE=Debug -DENABLE_CUDA=On -DCMAKE_CUDA_STANDARD=14", 2, no],
+                    ["intel", "intel-ubuntu-20.04:intel-2021.2.0", "-DCMAKE_CXX_COMPILER=dpcpp -DENABLE_SYCL=On -DENABLE_OPENMP=OFF -DENABLE_ALL_WARNINGS=Off -DBLT_CXX_STD=c++17", 16, no]]
+
+    # TODO hip needs to be added back when the base container builds. wompwomp
+
+    # Run tests inside the container above - we could also build with Dockerfile if desired
+    container:
+      image: ghcr.io/rse-ops/${{ matrix.container[1] }}
+      options: "--platform=${{ matrix.arch }}"
+
+    name: Build and Test ${{ matrix.container[1] }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Retrieve modules!
+        run: git submodule init && git submodule update
+
+      - name: Build gcc
+        if: ${{ matrix.container[0] == 'gcc' }}        
+        run: |
+          mkdir build && cd build && cmake ${{ matrix.container[2] }} ..
+          make -j ${{ matrix.container[3] }}
+
+      - name: Build nvidia cuda
+        if: ${{ matrix.container[0] == 'nvidia' }}        
+        run: |
+          export CUDA_HOME=/opt/spack/opt/spack/linux-ubuntu20.04-x86_64/gcc-9.3.0/cuda-11.1.1-6en2opdequtkojndbftvo47iqsgfeokf
+          export CUDA_INCLUDE_DIRS=/opt/view/targets/x86_64-linux/include:/opt/view/nvvm/include:/opt/spack/opt/spack/linux-ubuntu20.04-x86_64/gcc-9.3.0/cuda-11.1.1-6en2opdequtkojndbftvo47iqsgfeokf/include
+          export LD_LIBRARY_PATH=/opt/view/targets/x86_64-linux/lib:/opt/spack/opt/spack/linux-ubuntu20.04-x86_64/gcc-9.3.0/cuda-11.1.1-6en2opdequtkojndbftvo47iqsgfeokf/lib64:/opt/view/nvvm/lib64:$LD_LIBRARY_PATH
+          mkdir build && cd build && cmake ${{ matrix.container[2] }} ..
+          make -j ${{ matrix.container[3] }}
+
+      - name: Build clang
+        if: ${{ matrix.container[0] == 'clang' }}        
+        run: |
+          export CC=/opt/view/bin/clang
+          export CXX=/opt/view/bin/clang++
+          export LDFLAGS="-L/opt/view/lib"
+          export CPPFLAGS="-I/opt/view/include/llvm"
+          mkdir build && cd build && cmake ${{ matrix.container[2] }} ..
+          make -j ${{ matrix.container[3] }}
+
+      - name: Build and test intel
+        if: ${{ matrix.container[0] == 'intel' }}        
+        shell: bash
+        run: |
+          source /opt/view/setvars.sh
+          mkdir build && cd build && cmake ${{ matrix.container[2] }} ..
+          make -j ${{ matrix.container[3] }}
+          ctest -T test --output-on-failure
+
+      - name: Test
+        if: ${{ matrix.container[4] == 'yes' }}
+        run: cd build && ctest -T test --output-on-failure
+
+    # TODO add codecov?
